@@ -4,27 +4,61 @@ def analyze_rice_field_risks(file_path):
     # Load the CSV data
     data = pd.read_csv(file_path)
 
-    # Define thresholds and conditions for risk analysis
-    climate_change_threshold = "High"  # Risk levels: Low, Medium, High
-    pest_outbreak_threshold = "High"  # Risk levels for pests
-    soil_degradation_threshold = "Severe"  # Soil issues levels: Low, Moderate, Severe
-    sentiment_threshold = "Negative"  # Sentiment: Positive, Neutral, Negative
+    # Define risk levels and associated weight scores for each factor
+    risk_weights = {
+        "Climate Change Risk": {"Low": 1, "Medium": 2, "High": 3},
+        "Pest Outbreak Risk": {"Low": 1, "Medium": 2, "High": 3},
+        "Soil Degradation": {"Low": 1, "Moderate": 2, "Severe": 3},
+        "Sentiment": {"Positive": 1, "Neutral": 2, "Negative": 3},
+    }
 
-    alerts = []
+    # Initialize a list to store results
+    results = []
 
     for index, row in data.iterrows():
-        # Analyze risk factors for climate change, pests, and soil degradation
-        if row['Climate Change Risk'] == climate_change_threshold or row['Pest Outbreak Risk'] == pest_outbreak_threshold:
-            if row['Soil Degradation'] == soil_degradation_threshold or row['Sentiment'] == sentiment_threshold:
-                alerts.append((row['Country'], "URGENT ACTION", f"High climate change risk, pest outbreak, severe soil degradation, {row['Sentiment']} sentiment"))
-            else:
-                alerts.append((row['Country'], "MONITOR", f"High climate change or pest risk with {row['Soil Degradation']} soil condition"))
-        elif row['Soil Degradation'] == "Low" and row['Climate Change Risk'] == "Low" and row['Pest Outbreak Risk'] == "Low":
-            alerts.append((row['Country'], "SAFE", f"Low risk in climate change, pests, and soil degradation"))
+        # Handle possible missing or unexpected values for each factor
+        climate_risk_score = risk_weights["Climate Change Risk"].get(row.get('Climate Change Risk', 'Low'), 1)
+        pest_risk_score = risk_weights["Pest Outbreak Risk"].get(row.get('Pest Outbreak Risk', 'Low'), 1)
+        soil_risk_score = risk_weights["Soil Degradation"].get(row.get('Soil Degradation', 'Low'), 1)
+        sentiment_risk_score = risk_weights["Sentiment"].get(row.get('Sentiment', 'Neutral'), 2)
 
-    return alerts
+        # Calculate the total combined risk score
+        total_risk_score = climate_risk_score + pest_risk_score + soil_risk_score + sentiment_risk_score
 
-# Sample CSV data creation
+        # Determine action based on the total risk score and define the reasoning
+        if total_risk_score >= 10:
+            action = "URGENT ACTION"
+            reason = ("High combined risk in Climate Change, Pest Outbreak, Soil Degradation, and Negative Sentiment. "
+                      "Immediate measures like soil conservation, pest management, and climate adaptation are needed.")
+        elif total_risk_score >= 7:
+            action = "MONITOR"
+            reason = ("Moderate combined risks, requiring constant monitoring of the factors to mitigate further risks. "
+                      "Implement pest control and improve soil management practices.")
+        elif total_risk_score <= 4:
+            action = "SAFE"
+            reason = "Low risk in all factors. Continue current practices, with regular monitoring."
+        else:
+            action = "MONITOR"
+            reason = "Moderate risks detected in some factors. Regular checks are needed to prevent escalation."
+
+        # Append the results to the list
+        results.append({
+            "Country": row['Country'],
+            "Climate Change Risk": row['Climate Change Risk'],
+            "Pest Outbreak Risk": row['Pest Outbreak Risk'],
+            "Soil Degradation": row['Soil Degradation'],
+            "Sentiment": row['Sentiment'],
+            "Total Risk Score": total_risk_score,
+            "Action": action,
+            "Reason": reason
+        })
+
+    # Convert results to a DataFrame for better presentation and return it
+    result_df = pd.DataFrame(results)
+
+    return result_df
+
+# Sample CSV data creation (Same as your original data, just adding a few more variations for variety)
 data = {
     'Country': ['India', 'Vietnam', 'Bangladesh', 'Thailand', 'Nigeria'],
     'Climate Change Risk': ['Medium', 'High', 'High', 'Medium', 'Low'],
@@ -38,8 +72,7 @@ sample_file = "rice_field_risks.csv"
 pd.DataFrame(data).to_csv(sample_file, index=False)
 
 # Analyze the rice field risks
-alerts = analyze_rice_field_risks(sample_file)
+alerts_df = analyze_rice_field_risks(sample_file)
 
-# Display alerts
-for alert in alerts:
-    print(f"Country: {alert[0]}, Action: {alert[1]}, Reason: {alert[2]}")
+# Display the alerts in a table format
+print(alerts_df)
